@@ -17,7 +17,7 @@
   <!-- Turf (bbox/optional clipping) -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- Data files: note the data/ prefix to match folder layout -->
+  <!-- Data files: note the data/ prefix to match your folder layout -->
   <script src="data/majas_tekdi_2.js"></script>
   <script src="data/plot_1.js"></script>
   <script src="data/buildings_final_5.js"></script>
@@ -39,7 +39,9 @@
     .section-tab.active { background:#e8f4ff; border-color:#cfe6ff; }
     .divider { height:1px; background:var(--border); margin:8px 0; }
     .basemap-row { font-size:13px; color:var(--muted); padding:6px 12px; }
-    .layer-panel { border-top:1px solid var(--border); padding:12px; overflow:auto; }
+
+    /* Panel containment: avoid page scroll while using table */
+    .layer-panel { border-top:1px solid var(--border); padding:12px; overflow:hidden; }
     .panel-head h3 { margin:0 0 6px; font-size:16px; }
     .panel-head p { margin:0; color:var(--muted); }
     .legend-box { margin:10px 0 12px; }
@@ -53,23 +55,29 @@
     .kpi { border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:#fafcff; }
     .kpi .k { font-size:12px; color:var(--muted); }
     .kpi .v { font-size:16px; font-weight:600; }
+
     details.attr { border:1px solid var(--border); border-radius:10px; background:#fff; }
     details.attr > summary { cursor:pointer; padding:8px 10px; font-weight:600; }
-    .schema { padding:8px 10px; display:grid; gap:6px; }
-    .schema .field { display:grid; grid-template-columns:140px 1fr 1fr 60px; gap:6px; font-size:13px; }
-    .schema .k { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#334155; }
-    .schema .lab { color:var(--muted); }
-    .schema .ex { color:#111827; }
-    .schema .u { color:var(--muted); text-align:right; }
-    .table-wrap { padding:6px 10px 10px; overflow:auto; }
-    .filter { padding:0 10px 8px; }
-    .grid { border-collapse:collapse; width:100%; }
-    .grid th, .grid td { border:1px solid var(--border); padding:6px 8px; font-size:13px; }
-    .grid th { background:#f3f4f6; text-align:left; font-weight:600; }
+
+    /* Scrollable attribute table area */
+    .table-wrap {
+      padding:6px 10px 10px;
+      max-height:42vh;           /* adjust height as desired */
+      overflow:auto;             /* independent scrolling */
+      overscroll-behavior:contain; /* prevent parent/page scroll */
+      border-top:1px solid var(--border);
+    }
+    .filter { padding:0 10px 8px; position:sticky; top:0; background:#fff; z-index:2; }
+
+    /* Table is horizontally scrollable if needed; sticky header */
+    .grid { border-collapse:collapse; width:max-content; min-width:100%; }
+    .grid th, .grid td { border:1px solid var(--border); padding:6px 8px; font-size:13px; white-space:nowrap; }
+    .grid th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
+
     .map-wrap { position:relative; }
     #map { position:absolute; inset:0; }
     @media (max-width: 900px) {
-      .app { grid-template-columns: 1fr; }
+      .app { grid-template-columns:1fr; }
       .sidebar { position:absolute; width:92vw; max-width:380px; height:86vh; z-index:20; margin:12px; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,0.15); }
     }
   </style>
@@ -111,7 +119,7 @@
     // State
     const Store = { state:{activeLayer:'uhi',extent:'site'}, subs:new Set(), set(p){Object.assign(this.state,p); this.subs.forEach(fn=>fn(this.state));}, on(fn){this.subs.add(fn); return ()=>this.subs.delete(fn);} };
 
-    // Registry (globals created by the data/*.js files)
+    // Registry
     const Layers = {
       uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context within the site.', fields:{ band:{label:'Intensity band',unit:''}, value:{label:'UHI value',unit:'°C'} } },
       vegetation:{ title:'Vegetation (trees)', dataVar:'json_2vp_vegetation_170625vp_vegetation_6', layerIds:['veg-point'], definition:'Tree locations and attributes; use for canopy context and counts within the site.', fields:{ fid:{label:'Feature id',unit:''}, species:{label:'Species',unit:''}, girth_rad:{label:'Girth radius',unit:'m'}, crown_rad:{label:'Crown radius',unit:'m'}, seas_type:{label:'Seasonality',unit:''}, flaura_typ:{label:'Flora type',unit:''} } },
@@ -134,7 +142,18 @@
       document.querySelector('.section-tab[data-layer="'+Store.state.activeLayer+'"]').classList.add('active');
       document.querySelectorAll('input[name="extent"]').forEach(r=>r.addEventListener('change', e=>Store.set({extent:e.target.value})));
     }
-    document.addEventListener('DOMContentLoaded', mountSidebar);
+    document.addEventListener('DOMContentLoaded', ()=>{
+      mountSidebar();
+      // Prevent scroll bubbling from table to page (optional)
+      const tw = document.querySelector('.table-wrap');
+      if (tw) {
+        tw.addEventListener('wheel', e => {
+          const atTop = tw.scrollTop === 0 && e.deltaY < 0;
+          const atBottom = tw.scrollTop + tw.clientHeight >= tw.scrollHeight && e.deltaY > 0;
+          if (!atTop && !atBottom) e.stopPropagation();
+        }, { passive: true });
+      }
+    });
 
     function toArray(fc){ return (fc && fc.features) ? fc.features : []; }
     function legendHTML(key){
@@ -206,11 +225,28 @@
     }
     Store.on(renderKPIs);
 
-    // Map init
-    const map = new mapboxgl.Map({ container:'map', style:'mapbox://styles/mapbox/light-v11', center:[72.859,19.141], zoom:15, attributionControl:true, hash:true });
+    // Map init with zoom limits
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [72.859, 19.141],
+      zoom: 15,
+      minZoom: 13,
+      maxZoom: 19,
+      attributionControl: true,
+      hash: true
+    });
     window.map = map;
     map.addControl(new mapboxgl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new mapboxgl.ScaleControl({maxWidth:140, unit:'metric'}));
+
+    // Clamp fitBounds to zoom limits
+    function safeFitBounds(bbox, padding=40){
+      if (!bbox) return;
+      map.fitBounds([[bbox[0],bbox[1]],[bbox[2],bbox[3]]], { padding, duration: 0 });
+      const z = Math.max(map.getMinZoom(), Math.min(map.getZoom(), map.getMaxZoom()));
+      if (z !== map.getZoom()) map.zoomTo(z, { duration: 0 });
+    }
 
     // Data source/layer helpers with diagnostics
     function ensureSource(id, dataVarName){
@@ -228,7 +264,6 @@
         map.addLayer({id:'bldg-line', type:'line', source:'bldg', paint:{'line-color':'#ffffff','line-width':0.2,'line-opacity':0.5}});
       }
       if (ensureSource('uhi','json_uhi_zones_k_east_ward_7')) {
-        // Safe categorical by band/class so it's visible even without numeric field
         map.addLayer({id:'uhi-fill', type:'fill', source:'uhi', paint:{
           'fill-color': ['match', ['coalesce',['get','band'],['get','class'],'other'],
             'low', '#fee5d9', 'moderate', '#fcae91', 'high', '#fb6a4a', 'very_high', '#de2d26',
@@ -279,13 +314,13 @@
     map.on('load', ()=>{
       console.log('json_* present:', Object.keys(window).filter(k=>k.startsWith('json_')));
 
-      // Fit to available data
+      // Fit to available data, clamped to zoom limits
       try{
         let box=null;
         if (window.json_majas_tekdi_2?.features?.length) box=turf.bbox(window.json_majas_tekdi_2);
         else if (window.json_buildings_final_5?.features?.length) box=turf.bbox(window.json_buildings_final_5);
         else if (window.json_plot_1?.features?.length) box=turf.bbox(window.json_plot_1);
-        if (box) map.fitBounds([[box[0],box[1]],[box[2],box[3]]], {padding:40, duration:0});
+        if (box) safeFitBounds(box, 40);
       }catch(e){ console.warn('fitBounds error', e); }
 
       addLayers();
