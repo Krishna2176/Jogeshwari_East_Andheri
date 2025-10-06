@@ -17,7 +17,7 @@
   <!-- Turf (bbox/optional clipping) -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- Data files: note the data/ prefix to match your folder layout -->
+  <!-- Data files -->
   <script src="data/majas_tekdi_2.js"></script>
   <script src="data/plot_1.js"></script>
   <script src="data/buildings_final_5.js"></script>
@@ -34,13 +34,25 @@
     .sidebar-header { position:sticky; top:0; padding:14px 16px; border-bottom:1px solid var(--border); background:#fff; z-index:2; }
     .site-title { font-weight:600; letter-spacing:.1px; }
     .extent { margin-top:8px; color:var(--muted); display:flex; gap:12px; }
-    .sections { display:flex; flex-direction:column; gap:6px; padding:12px; overflow:auto; }
-    .section-tab { text-align:left; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#f8fafc; cursor:pointer; font-weight:500; }
-    .section-tab.active { background:#e8f4ff; border-color:#cfe6ff; }
-    .divider { height:1px; background:var(--border); margin:8px 0; }
-    .basemap-row { font-size:13px; color:var(--muted); padding:6px 12px; }
+    .sections { display:flex; flex-direction:column; gap:8px; padding:12px; overflow:auto; }
 
-    /* Panel containment: avoid page scroll while using table */
+    /* Section rows with inline switch */
+    .section-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .section-row .section-tab { flex:1; text-align:left; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#f8fafc; cursor:pointer; font-weight:500; }
+    .section-row .section-tab.active { background:#e8f4ff; border-color:#cfe6ff; }
+
+    /* iOS-style toggle */
+    .switch { position: relative; display:inline-flex; align-items:center; width:40px; height:22px; }
+    .switch input { display:none; }
+    .switch span { position:relative; display:block; width:40px; height:22px; background:#e5e7eb; border-radius:999px; box-shadow:inset 0 0 0 1px #d1d5db; transition:background .2s ease; }
+    .switch span::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.15); transition:transform .2s ease; }
+    .switch input:checked + span { background:#0ea5e9; box-shadow:inset 0 0 0 1px #0ea5e9; }
+    .switch input:checked + span::after { transform:translateX(18px); }
+
+    .divider { height:1px; background:var(--border); margin:8px 0; }
+    .basemap-row { font-size:13px; color:var(--muted); padding:6px 2px; }
+
+    /* Panel and table */
     .layer-panel { border-top:1px solid var(--border); padding:12px; overflow:hidden; }
     .panel-head h3 { margin:0 0 6px; font-size:16px; }
     .panel-head p { margin:0; color:var(--muted); }
@@ -62,14 +74,12 @@
     /* Scrollable attribute table area */
     .table-wrap {
       padding:6px 10px 10px;
-      max-height:42vh;           /* adjust height as desired */
-      overflow:auto;             /* independent scrolling */
-      overscroll-behavior:contain; /* prevent parent/page scroll */
+      max-height:42vh;
+      overflow:auto;
+      overscroll-behavior:contain;
       border-top:1px solid var(--border);
     }
     .filter { padding:0 10px 8px; position:sticky; top:0; background:#fff; z-index:2; }
-
-    /* Table is horizontally scrollable if needed; sticky header */
     .grid { border-collapse:collapse; width:max-content; min-width:100%; }
     .grid th, .grid td { border:1px solid var(--border); padding:6px 8px; font-size:13px; white-space:nowrap; }
     .grid th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
@@ -94,12 +104,30 @@
       </div>
 
       <nav class="sections">
-        <button class="section-tab" data-layer="uhi">Urban heat island</button>
-        <button class="section-tab" data-layer="vegetation">Vegetation</button>
-        <button class="section-tab" data-layer="buildings">Buildings</button>
-        <button class="section-tab" data-layer="contours">Contours</button>
-        <button class="section-tab" data-layer="roads">Roads</button>
-        <button class="section-tab" data-layer="site">Site & plot</button>
+        <div class="section-row" data-layer="uhi">
+          <button class="section-tab">Urban heat island</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="uhi" checked /><span></span></label>
+        </div>
+        <div class="section-row" data-layer="vegetation">
+          <button class="section-tab">Vegetation</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="vegetation" checked /><span></span></label>
+        </div>
+        <div class="section-row" data-layer="buildings">
+          <button class="section-tab">Buildings</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="buildings" checked /><span></span></label>
+        </div>
+        <div class="section-row" data-layer="contours">
+          <button class="section-tab">Contours</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="contours" checked /><span></span></label>
+        </div>
+        <div class="section-row" data-layer="roads">
+          <button class="section-tab">Roads</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="roads" checked /><span></span></label>
+        </div>
+        <div class="section-row" data-layer="site">
+          <button class="section-tab">Site & plot</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="site" checked /><span></span></label>
+        </div>
         <div class="divider"></div>
         <div class="basemap-row">Basemap: Carto Light</div>
       </nav>
@@ -116,10 +144,18 @@
     // Mapbox token
     mapboxgl.accessToken = 'pk.eyJ1Ijoia3Jpc2huYTQ1NjciLCJhIjoiY21kcXNjODg2MDltbTJycTNxMmJsenNhYiJ9.Upxy1ZZPcflUGhWZ004hHw';
 
-    // State
-    const Store = { state:{activeLayer:'uhi',extent:'site'}, subs:new Set(), set(p){Object.assign(this.state,p); this.subs.forEach(fn=>fn(this.state));}, on(fn){this.subs.add(fn); return ()=>this.subs.delete(fn);} };
+    // State with per-layer visibility
+    const Store = {
+      state:{ activeLayer:'uhi', extent:'site',
+        visible:{ uhi:true, vegetation:true, buildings:true, contours:true, roads:true, plot:true, site:true }
+      },
+      subs:new Set(),
+      set(p){ Object.assign(this.state,p); this.subs.forEach(fn=>fn(this.state)); },
+      on(fn){ this.subs.add(fn); return ()=>this.subs.delete(fn); }
+    };
+    // Restore saved visibility
+    try { const saved = JSON.parse(localStorage.getItem('layer_visible')||'{}'); Store.state.visible = { ...Store.state.visible, ...saved }; } catch(e){}
 
-    // Registry
     const Layers = {
       uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context within the site.', fields:{ band:{label:'Intensity band',unit:''}, value:{label:'UHI value',unit:'°C'} } },
       vegetation:{ title:'Vegetation (trees)', dataVar:'json_2vp_vegetation_170625vp_vegetation_6', layerIds:['veg-point'], definition:'Tree locations and attributes; use for canopy context and counts within the site.', fields:{ fid:{label:'Feature id',unit:''}, species:{label:'Species',unit:''}, girth_rad:{label:'Girth radius',unit:'m'}, crown_rad:{label:'Crown radius',unit:'m'}, seas_type:{label:'Seasonality',unit:''}, flaura_typ:{label:'Flora type',unit:''} } },
@@ -130,30 +166,36 @@
       site:{ title:'Site boundary', dataVar:'json_majas_tekdi_2', layerIds:['site-line'], definition:'Project/site boundary and metadata; default extent for KPIs on a small canvas.', fields:{ name:{label:'Name',unit:''}, area:{label:'Area',unit:'m²'}, no_bldg:{label:'Building count',unit:''}, pop:{label:'Population',unit:''}, density:{label:'Density',unit:'per km²'} } }
     };
 
-    // Sidebar
     function mountSidebar(){
-      const tabs=document.querySelectorAll('.section-tab');
-      tabs.forEach(btn=>{
+      // Section rows
+      document.querySelectorAll('.section-row').forEach(row=>{
+        const key = row.getAttribute('data-layer');
+        const btn = row.querySelector('.section-tab');
+        const chk = row.querySelector('.vis-toggle');
+
+        btn.classList.toggle('active', key === Store.state.activeLayer);
+        if (chk) chk.checked = Store.state.visible[key] ?? true;
+
         btn.addEventListener('click', ()=>{
-          tabs.forEach(b=>b.classList.toggle('active', b===btn));
-          Store.set({activeLayer:btn.dataset.layer});
+          document.querySelectorAll('.section-tab').forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+          Store.set({ activeLayer: key });
         });
+
+        if (chk) {
+          chk.addEventListener('click', e=> e.stopPropagation());
+          chk.addEventListener('change', e=>{
+            Store.state.visible[key] = e.target.checked;
+            if (window.map) setLayerVisible(key, e.target.checked);
+            localStorage.setItem('layer_visible', JSON.stringify(Store.state.visible));
+            if (window.map && map.loaded()) applyPreset(Store.state.activeLayer);
+          });
+        }
       });
-      document.querySelector('.section-tab[data-layer="'+Store.state.activeLayer+'"]').classList.add('active');
+
       document.querySelectorAll('input[name="extent"]').forEach(r=>r.addEventListener('change', e=>Store.set({extent:e.target.value})));
     }
-    document.addEventListener('DOMContentLoaded', ()=>{
-      mountSidebar();
-      // Prevent scroll bubbling from table to page (optional)
-      const tw = document.querySelector('.table-wrap');
-      if (tw) {
-        tw.addEventListener('wheel', e => {
-          const atTop = tw.scrollTop === 0 && e.deltaY < 0;
-          const atBottom = tw.scrollTop + tw.clientHeight >= tw.scrollHeight && e.deltaY > 0;
-          if (!atTop && !atBottom) e.stopPropagation();
-        }, { passive: true });
-      }
-    });
+    document.addEventListener('DOMContentLoaded', mountSidebar);
 
     function toArray(fc){ return (fc && fc.features) ? fc.features : []; }
     function legendHTML(key){
@@ -240,7 +282,6 @@
     map.addControl(new mapboxgl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new mapboxgl.ScaleControl({maxWidth:140, unit:'metric'}));
 
-    // Clamp fitBounds to zoom limits
     function safeFitBounds(bbox, padding=40){
       if (!bbox) return;
       map.fitBounds([[bbox[0],bbox[1]],[bbox[2],bbox[3]]], { padding, duration: 0 });
@@ -248,7 +289,6 @@
       if (z !== map.getZoom()) map.zoomTo(z, { duration: 0 });
     }
 
-    // Data source/layer helpers with diagnostics
     function ensureSource(id, dataVarName){
       const data=window[dataVarName]; if (!data){ console.warn('Missing data var:', dataVarName); return false; }
       if (!map.getSource(id)) map.addSource(id, {type:'geojson', data}); return true;
@@ -277,6 +317,13 @@
       if (ensureSource('contours','json_contours_4')) map.addLayer({id:'contour-line', type:'line', source:'contours', paint:{'line-color':'#64748b','line-width':1.2,'line-opacity':0.7}});
     }
 
+    // Toggle helper
+    function setLayerVisible(key, on){
+      (Layers[key].layerIds||[]).forEach(id=>{
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+      });
+    }
+
     const presets = {
       uhi:{ show:['uhi-fill','uhi-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','site-line','plot-fill','plot-line','veg-point'] },
       vegetation:{ show:['veg-point'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line'] },
@@ -285,14 +332,32 @@
       roads:{ show:['road-line'], dim:['bldg-fill','bldg-line'], extras:['contour-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line','veg-point'] },
       site:{ show:['site-line','plot-fill','plot-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point'] }
     };
+
     function applyPreset(key){
       const all=new Set([].concat(...Object.values(presets).map(v=>[...v.show,...v.dim,...v.extras])));
       all.forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility','none'); });
-      (presets[key]?.show||[]).forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility','visible'); });
-      (presets[key]?.dim||[]).forEach(id=>{
-        if(id==='bldg-fill' && map.getLayer(id)){ map.setLayoutProperty(id,'visibility','visible'); map.setPaintProperty(id,'fill-color','#111827'); map.setPaintProperty(id,'fill-opacity',0.35); }
+
+      const ok = (layerKey) => Store.state.visible[layerKey] !== false;
+      const mapIdToKey = {
+        'uhi-fill':'uhi','uhi-line':'uhi',
+        'veg-point':'vegetation',
+        'bldg-fill':'buildings','bldg-line':'buildings',
+        'contour-line':'contours',
+        'road-line':'roads',
+        'plot-fill':'plot','plot-line':'plot',
+        'site-line':'site'
+      };
+
+      const ids = [...(presets[key]?.show||[]), ...(presets[key]?.dim||[]), ...(presets[key]?.extras||[])];
+      ids.forEach(id=>{
+        const k = mapIdToKey[id]; if (!k || !ok(k)) return;
+        if (map.getLayer(id)) map.setLayoutProperty(id,'visibility','visible');
       });
-      (presets[key]?.extras||[]).forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility','visible'); });
+
+      if (Store.state.visible.buildings && (presets[key]?.dim||[]).includes('bldg-fill') && map.getLayer('bldg-fill')) {
+        map.setPaintProperty('bldg-fill','fill-color','#111827');
+        map.setPaintProperty('bldg-fill','fill-opacity',0.35);
+      }
     }
 
     function attachFeatureInfo(){
@@ -312,9 +377,6 @@
     }
 
     map.on('load', ()=>{
-      console.log('json_* present:', Object.keys(window).filter(k=>k.startsWith('json_')));
-
-      // Fit to available data, clamped to zoom limits
       try{
         let box=null;
         if (window.json_majas_tekdi_2?.features?.length) box=turf.bbox(window.json_majas_tekdi_2);
@@ -325,21 +387,14 @@
 
       addLayers();
 
-      // Force show all on first paint
-      ['site-line','plot-fill','plot-line','bldg-fill','bldg-line','uhi-fill','uhi-line','veg-point','road-line','contour-line']
-        .forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility','visible'); });
-
-      // Diagnostics
-      ['site','plot','bldg','uhi','veg','roads','contours'].forEach(s=>console.log('src', s, !!map.getSource(s)));
-      ['site-line','plot-fill','plot-line','bldg-fill','bldg-line','uhi-fill','uhi-line','veg-point','road-line','contour-line']
-        .forEach(l=>console.log('lyr', l, !!map.getLayer(l)));
+      // Apply initial visibility from switches
+      Object.keys(Layers).forEach(k => setLayerVisible(k, Store.state.visible[k] !== false));
 
       attachFeatureInfo();
       renderLayerSection(Store.state);
       renderKPIs(Store.state);
 
-      // Apply the current preset after first paint
-      setTimeout(()=> applyPreset(Store.state.activeLayer), 80);
+      setTimeout(()=> applyPreset(Store.state.activeLayer), 60);
     });
 
     Store.on(s=>{ if(map.loaded()) applyPreset(s.activeLayer); });
