@@ -146,7 +146,9 @@
 
     const Layers = {
       uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context.', fields:{
-        band:{label:'Intensity band',unit:''}, value:{label:'UHI value',unit:'°C'}
+        Label:{label:'Label',unit:''},
+        UHI_Class:{label:'Class',unit:''},
+        first:{label:'First',unit:''}
       } },
       vegetation:{ title:'Vegetation (trees)', dataVar:'json_2vp_vegetation_170625vp_vegetation_6', layerIds:['veg-point'], definition:'Tree locations and attributes.', fields:{
         fid:{label:'Feature id',unit:''}, species:{label:'Species',unit:''}, girth_rad:{label:'Girth radius',unit:'m'}, crown_rad:{label:'Crown radius',unit:'m'}, seas_type:{label:'Seasonality',unit:''}, flaura_typ:{label:'Flora type',unit:''}
@@ -234,8 +236,15 @@
     function defaultUhiPaint(){
       return {
         fill: {
-          'fill-color': ['match', ['coalesce',['get','band'],['get','class'],'other'],
-            'low', '#fee5d9', 'moderate', '#fcae91', 'high', '#fb6a4a', 'very_high', '#de2d26', 'other', '#fb6a4a'
+          'fill-color': [
+            'match', ['get','Label'],
+            'Extreme (>5°C)', '#de2d26',
+            'Very High (4–5°C)', '#fb6a4a',
+            'High (3–4°C)', '#fcae91',
+            'Moderate (2–3°C)', '#fee5d9',
+            'Low (1–2°C)', '#fef0d9',
+            'Very Low (<1°C)', '#fff5eb',
+            '#fb6a4a'
           ],
           'fill-opacity': 0.45
         },
@@ -322,7 +331,7 @@
       if (layerKey==='buildings'){ const cnt=feats.length; const fp=feats.reduce((s,f)=>s+(+f.properties.bldg_fp||0),0); const siteArea=window.json_majas_tekdi_2?.features?.[0]?.properties?.area||null; const cov=siteArea?(fp/siteArea*100):null; return [{label:'Buildings',value:fmt(cnt)},{label:'Footprint',value:fmt(fp,1)+' m²'},{label:'Coverage',value:cov==null?'—':fmt(cov,1)+'%'}];}
       if (layerKey==='roads'){ return [{label:'Road segments',value:fmt(feats.length)},{label:'Classes',value:fmt(new Set(feats.map(f=>f.properties.ro_typo)).size)}];}
       if (layerKey==='contours'){ const v=feats.map(f=>+f.properties.ELEV).filter(x=>!isNaN(x)); return [{label:'Contours',value:fmt(v.length)},{label:'Elevation range',value:v.length?`${fmt(Math.min(...v))}–${fmt(Math.max(...v))} m`:'—'}];}
-      if (layerKey==='uhi'){ const bands={}; feats.forEach(f=>{ const b=f.properties.band ?? f.properties.class ?? 'n/a'; bands[b]=(bands[b]||0)+1;}); const items=Object.entries(bands).slice(0,3).map(([k,v])=>`${k}:${v}`).join('  '); return [{label:'UHI polygons',value:fmt(feats.length)},{label:'Top bands',value:items||'—'}];}
+      if (layerKey==='uhi'){ const bands={}; feats.forEach(f=>{ const b=f.properties.Label ?? f.properties.UHI_Class ?? 'n/a'; bands[b]=(bands[b]||0)+1;}); const items=Object.entries(bands).slice(0,3).map(([k,v])=>`${k}:${v}`).join('  '); return [{label:'UHI polygons',value:fmt(feats.length)},{label:'Top labels/classes',value:items||'—'}];}
       if (layerKey==='plot'){ const cnt=feats.length; const area=feats.reduce((s,f)=>s+(+f.properties.area||0),0); return [{label:'Parcels',value:fmt(cnt)},{label:'Total area',value:fmt(area,1)+' m²'}];}
       if (layerKey==='site'){ const p=window.json_majas_tekdi_2?.features?.[0]?.properties||{}; return [{label:'Site area',value:p.area?fmt(p.area,1)+' m²':'—'},{label:'Buildings',value:fmt(p.no_bldg)},{label:'Population',value:fmt(p.pop)}];}
       return [];
