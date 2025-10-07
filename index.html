@@ -14,7 +14,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
 
-  <!-- Turf (bbox/optional clipping) -->
+  <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
   <!-- Data files -->
@@ -36,12 +36,10 @@
     .extent { margin-top:8px; color:var(--muted); display:flex; gap:12px; }
     .sections { display:flex; flex-direction:column; gap:8px; padding:12px; overflow:auto; }
 
-    /* Section rows with inline switch */
     .section-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .section-row .section-tab { flex:1; text-align:left; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#f8fafc; cursor:pointer; font-weight:500; }
     .section-row .section-tab.active { background:#e8f4ff; border-color:#cfe6ff; }
 
-    /* iOS-style toggle */
     .switch { position: relative; display:inline-flex; align-items:center; width:40px; height:22px; }
     .switch input { display:none; }
     .switch span { position:relative; display:block; width:40px; height:22px; background:#e5e7eb; border-radius:999px; box-shadow:inset 0 0 0 1px #d1d5db; transition:background .2s ease; }
@@ -52,7 +50,6 @@
     .divider { height:1px; background:var(--border); margin:8px 0; }
     .basemap-row { font-size:13px; color:var(--muted); padding:6px 2px; }
 
-    /* Panel and table */
     .layer-panel { border-top:1px solid var(--border); padding:12px; overflow:hidden; }
     .panel-head h3 { margin:0 0 6px; font-size:16px; }
     .panel-head p { margin:0; color:var(--muted); }
@@ -71,14 +68,7 @@
     details.attr { border:1px solid var(--border); border-radius:10px; background:#fff; }
     details.attr > summary { cursor:pointer; padding:8px 10px; font-weight:600; }
 
-    /* Scrollable attribute table area */
-    .table-wrap {
-      padding:6px 10px 10px;
-      max-height:42vh;
-      overflow:auto;
-      overscroll-behavior:contain;
-      border-top:1px solid var(--border);
-    }
+    .table-wrap { padding:6px 10px 10px; max-height:42vh; overflow:auto; overscroll-behavior:contain; border-top:1px solid var(--border); }
     .filter { padding:0 10px 8px; position:sticky; top:0; background:#fff; z-index:2; }
     .grid { border-collapse:collapse; width:max-content; min-width:100%; }
     .grid th, .grid td { border:1px solid var(--border); padding:6px 8px; font-size:13px; white-space:nowrap; }
@@ -141,10 +131,8 @@
   </div>
 
   <script>
-    // Mapbox token
     mapboxgl.accessToken = 'pk.eyJ1Ijoia3Jpc2huYTQ1NjciLCJhIjoiY21kcXNjODg2MDltbTJycTNxMmJsenNhYiJ9.Upxy1ZZPcflUGhWZ004hHw';
 
-    // State with per-layer visibility
     const Store = {
       state:{ activeLayer:'uhi', extent:'site',
         visible:{ uhi:true, vegetation:true, buildings:true, contours:true, roads:true, plot:true, site:true }
@@ -153,7 +141,6 @@
       set(p){ Object.assign(this.state,p); this.subs.forEach(fn=>fn(this.state)); },
       on(fn){ this.subs.add(fn); return ()=>this.subs.delete(fn); }
     };
-    // Restore saved visibility
     try { const saved = JSON.parse(localStorage.getItem('layer_visible')||'{}'); Store.state.visible = { ...Store.state.visible, ...saved }; } catch(e){}
 
     const Layers = {
@@ -167,7 +154,6 @@
     };
 
     function mountSidebar(){
-      // Section rows
       document.querySelectorAll('.section-row').forEach(row=>{
         const key = row.getAttribute('data-layer');
         const btn = row.querySelector('.section-tab');
@@ -192,7 +178,6 @@
           });
         }
       });
-
       document.querySelectorAll('input[name="extent"]').forEach(r=>r.addEventListener('change', e=>Store.set({extent:e.target.value})));
     }
     document.addEventListener('DOMContentLoaded', mountSidebar);
@@ -244,7 +229,7 @@
     function updateAttrTable(layerKey){
       const host=document.getElementById('table-host');
       host.innerHTML = `<div class="filter"><input id="attr-filter" placeholder="Filter attributes..." /></div>` + renderTable(layerKey);
-      host.querySelector('#attr-filter').addEventListener('input', e=>{
+      host.querySelector('#attr-filter').addEventListener('input', (e)=>{
         const tables=host.querySelectorAll('table'); tables.forEach(t=>t.remove());
         host.insertAdjacentHTML('beforeend', renderTable(layerKey, e.target.value));
       });
@@ -261,32 +246,64 @@
       if (layerKey==='site'){ const p=window.json_majas_tekdi_2?.features?.[0]?.properties||{}; return [{label:'Site area',value:p.area?fmt(p.area,1)+' m²':'—'},{label:'Buildings',value:fmt(p.no_bldg)},{label:'Population',value:fmt(p.pop)}];}
       return [];
     }
-    function renderKPIs(state){
-      const html=computeKPIs(state.activeLayer).map(i=>`<div class="kpi"><div class="k">${i.label}</div><div class="v">${i.value}</div></div>`).join('');
-      const el=document.getElementById('kpis'); if (el) el.innerHTML = html || '<div class="muted">No KPIs available</div>';
-    }
-    Store.on(renderKPIs);
+    Store.on(state=>{
+      const el=document.getElementById('kpis');
+      if (el) el.innerHTML = computeKPIs(state.activeLayer).map(i=>`<div class="kpi"><div class="k">${i.label}</div><div class="v">${i.value}</div></div>`).join('') || '<div class="muted">No KPIs available</div>';
+    });
 
-    // Map init with zoom limits
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/light-v11',
       center: [72.859, 19.141],
       zoom: 15,
-      minZoom: 13,
-      maxZoom: 19,
       attributionControl: true,
       hash: true
     });
     window.map = map;
     map.addControl(new mapboxgl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new mapboxgl.ScaleControl({maxWidth:140, unit:'metric'}));
+    // Smoother wheel feel
+    map.scrollZoom.setWheelZoomRate(1/600);
+    map.scrollZoom.setZoomRate(1/1.6);
 
-    function safeFitBounds(bbox, padding=40){
-      if (!bbox) return;
-      map.fitBounds([[bbox[0],bbox[1]],[bbox[2],bbox[3]]], { padding, duration: 0 });
-      const z = Math.max(map.getMinZoom(), Math.min(map.getZoom(), map.getMaxZoom()));
-      if (z !== map.getZoom()) map.zoomTo(z, { duration: 0 });
+    // Smooth 700 m focus
+    const RADIUS_METERS = 700; // pan radius
+    const SPAN_METERS   = 700; // max visible width
+
+    function zoomForMetersAtLat(targetMeters, lat, pxWidth) {
+      const metersPerPixelAtZ0 = 156543.03392 * Math.cos(lat * Math.PI / 180);
+      return Math.log2((metersPerPixelAtZ0 * pxWidth) / targetMeters);
+    }
+    function buildingsBBox() {
+      const fc = window.json_buildings_final_5;
+      return (fc && fc.features && fc.features.length) ? turf.bbox(fc) : null;
+    }
+    function buildingsCentroid() {
+      const b = buildingsBBox(); return b ? [(b[0]+b[2])/2, (b[1]+b[3])/2] : null;
+    }
+    let buildingsCenter = null;
+
+    function applyZoomOutCapSpan() {
+      const b = buildingsBBox(); if (!b) return;
+      const lat = (b[1]+b[3])/2, px = map.getCanvas().width || 800;
+      const zMin = zoomForMetersAtLat(SPAN_METERS, lat, px);
+      const clamp = Math.min(zMin, map.getMaxZoom() ?? 24);
+      map.setMinZoom(clamp);
+      if (map.getZoom() < clamp) map.easeTo({ zoom: clamp, duration: 120 });
+    }
+
+    let panGuardTimer = null;
+    function scheduleRadiusGuard() {
+      if (panGuardTimer) clearTimeout(panGuardTimer);
+      panGuardTimer = setTimeout(enforceRadiusEased, 150);
+    }
+    function enforceRadiusEased() {
+      if (!buildingsCenter) return;
+      const c = map.getCenter();
+      const d = turf.distance(turf.point([c.lng, c.lat]), turf.point(buildingsCenter), { units:'meters' });
+      if (d > RADIUS_METERS) {
+        map.easeTo({ center: buildingsCenter, duration: 250, easing: t => t });
+      }
     }
 
     function ensureSource(id, dataVarName){
@@ -317,7 +334,6 @@
       if (ensureSource('contours','json_contours_4')) map.addLayer({id:'contour-line', type:'line', source:'contours', paint:{'line-color':'#64748b','line-width':1.2,'line-opacity':0.7}});
     }
 
-    // Toggle helper
     function setLayerVisible(key, on){
       (Layers[key].layerIds||[]).forEach(id=>{
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
@@ -382,20 +398,31 @@
         if (window.json_majas_tekdi_2?.features?.length) box=turf.bbox(window.json_majas_tekdi_2);
         else if (window.json_buildings_final_5?.features?.length) box=turf.bbox(window.json_buildings_final_5);
         else if (window.json_plot_1?.features?.length) box=turf.bbox(window.json_plot_1);
-        if (box) safeFitBounds(box, 40);
+        if (box) map.fitBounds([[box[0],box[1]],[box[2],box[3]]], { padding: 40, duration: 0 });
       }catch(e){ console.warn('fitBounds error', e); }
 
       addLayers();
 
-      // Apply initial visibility from switches
       Object.keys(Layers).forEach(k => setLayerVisible(k, Store.state.visible[k] !== false));
 
       attachFeatureInfo();
       renderLayerSection(Store.state);
-      renderKPIs(Store.state);
+      const el=document.getElementById('kpis');
+      if (el) el.innerHTML = computeKPIs(Store.state.activeLayer).map(i=>`<div class="kpi"><div class="k">${i.label}</div><div class="v">${i.value}</div></div>`).join('');
 
-      setTimeout(()=> applyPreset(Store.state.activeLayer), 60);
+      setTimeout(()=>{
+        applyPreset(Store.state.activeLayer);
+        buildingsCenter = buildingsCentroid();
+        applyZoomOutCapSpan();
+        enforceRadiusEased();
+      }, 60);
     });
+
+    // Smooth enforcement hooks
+    window.addEventListener('resize', applyZoomOutCapSpan);
+    map.on('zoom', applyZoomOutCapSpan);
+    map.on('move', scheduleRadiusGuard);
+    map.on('moveend', enforceRadiusEased);
 
     Store.on(s=>{ if(map.loaded()) applyPreset(s.activeLayer); });
   </script>
