@@ -33,7 +33,6 @@
     .sidebar { background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; }
     .sidebar-header { position:sticky; top:0; padding:14px 16px; border-bottom:1px solid var(--border); background:#fff; z-index:2; }
     .site-title { font-weight:600; letter-spacing:.1px; }
-    .extent { margin-top:8px; color:var(--muted); display:flex; gap:12px; }
     .sections { display:flex; flex-direction:column; gap:8px; padding:12px; overflow:auto; }
 
     .section-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -87,10 +86,6 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="site-title">Site Explorer</div>
-        <div class="extent">
-          <label><input type="radio" name="extent" value="site" checked> Site</label>
-          <label><input type="radio" name="extent" value="viewport"> Viewport</label>
-        </div>
       </div>
 
       <nav class="sections">
@@ -115,9 +110,14 @@
           <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="roads" checked /><span></span></label>
         </div>
         <div class="section-row" data-layer="site">
-          <button class="section-tab">Site & plot</button>
+          <button class="section-tab">Site</button>
           <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="site" checked /><span></span></label>
         </div>
+        <div class="section-row" data-layer="plot">
+          <button class="section-tab">Plot</button>
+          <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="plot" checked /><span></span></label>
+        </div>
+
         <div class="divider"></div>
         <div class="basemap-row">Basemap: Carto Light</div>
       </nav>
@@ -134,8 +134,9 @@
     mapboxgl.accessToken = 'pk.eyJ1Ijoia3Jpc2huYTQ1NjciLCJhIjoiY21kcXNjODg2MDltbTJycTNxMmJsenNhYiJ9.Upxy1ZZPcflUGhWZ004hHw';
 
     const Store = {
-      state:{ activeLayer:'uhi', extent:'site',
-        visible:{ uhi:true, vegetation:true, buildings:true, contours:true, roads:true, plot:true, site:true }
+      state:{ activeLayer:'uhi',
+        visible:{ uhi:true, vegetation:true, buildings:true, contours:true, roads:true, plot:true, site:true },
+        thematic:{ uhi: null }
       },
       subs:new Set(),
       set(p){ Object.assign(this.state,p); this.subs.forEach(fn=>fn(this.state)); },
@@ -144,13 +145,19 @@
     try { const saved = JSON.parse(localStorage.getItem('layer_visible')||'{}'); Store.state.visible = { ...Store.state.visible, ...saved }; } catch(e){}
 
     const Layers = {
-      uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context within the site.', fields:{ band:{label:'Intensity band',unit:''}, value:{label:'UHI value',unit:'°C'} } },
-      vegetation:{ title:'Vegetation (trees)', dataVar:'json_2vp_vegetation_170625vp_vegetation_6', layerIds:['veg-point'], definition:'Tree locations and attributes; use for canopy context and counts within the site.', fields:{ fid:{label:'Feature id',unit:''}, species:{label:'Species',unit:''}, girth_rad:{label:'Girth radius',unit:'m'}, crown_rad:{label:'Crown radius',unit:'m'}, seas_type:{label:'Seasonality',unit:''}, flaura_typ:{label:'Flora type',unit:''} } },
-      buildings:{ title:'Buildings', dataVar:'json_buildings_final_5', layerIds:['bldg-fill','bldg-line'], definition:'Building footprints and attributes used for figure–ground and coverage summaries.', fields:{ bldg_id:{label:'Building id',unit:''}, bldg_use:{label:'Use',unit:''}, bldg_fp:{label:'Footprint',unit:'m²'}, bldg_area:{label:'Floor area',unit:'m²'}, bldg_ht:{label:'Height',unit:'m'}, bldg_flr:{label:'Floors',unit:''}, no_hh:{label:'Households',unit:''}, pop:{label:'Population',unit:''}, bldg_roof:{label:'Roof',unit:''} } },
-      contours:{ title:'Contours', dataVar:'json_contours_4', layerIds:['contour-line'], definition:'Elevation contour lines providing site topography context.', fields:{ ID:{label:'Contour id',unit:''}, ELEV:{label:'Elevation',unit:'m'} } },
-      roads:{ title:'Roads', dataVar:'json_road_final_3', layerIds:['road-line'], definition:'Road network with width, material, type, and access class.', fields:{ ro_name:{label:'Name',unit:''}, ro_width:{label:'Width',unit:'m'}, ro_ml:{label:'Material',unit:''}, ro_typo:{label:'Class',unit:''}, ro_acces:{label:'Access',unit:''} } },
-      plot:{ title:'Plot area', dataVar:'json_plot_1', layerIds:['plot-fill','plot-line'], definition:'Cadastral plots with survey numbers and area; also defines analysis extent if chosen.', fields:{ survey_no:{label:'Survey no',unit:''}, area:{label:'Area',unit:'m²'}, land_use:{label:'Land use',unit:''}, fsi:{label:'FSI',unit:''} } },
-      site:{ title:'Site boundary', dataVar:'json_majas_tekdi_2', layerIds:['site-line'], definition:'Project/site boundary and metadata; default extent for KPIs on a small canvas.', fields:{ name:{label:'Name',unit:''}, area:{label:'Area',unit:'m²'}, no_bldg:{label:'Building count',unit:''}, pop:{label:'Population',unit:''}, density:{label:'Density',unit:'per km²'} } }
+      uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context.', fields:{
+        band:{label:'Intensity band',unit:''}, value:{label:'UHI value',unit:'°C'}
+      } },
+      vegetation:{ title:'Vegetation (trees)', dataVar:'json_2vp_vegetation_170625vp_vegetation_6', layerIds:['veg-point'], definition:'Tree locations and attributes.', fields:{
+        fid:{label:'Feature id',unit:''}, species:{label:'Species',unit:''}, girth_rad:{label:'Girth radius',unit:'m'}, crown_rad:{label:'Crown radius',unit:'m'}, seas_type:{label:'Seasonality',unit:''}, flaura_typ:{label:'Flora type',unit:''}
+      } },
+      buildings:{ title:'Buildings', dataVar:'json_buildings_final_5', layerIds:['bldg-fill','bldg-line'], definition:'Building footprints and attributes.', fields:{
+        bldg_id:{label:'Building id',unit:''}, bldg_use:{label:'Use',unit:''}, bldg_fp:{label:'Footprint',unit:'m²'}, bldg_area:{label:'Floor area',unit:'m²'}, bldg_ht:{label:'Height',unit:'m'}, bldg_flr:{label:'Floors',unit:''}, no_hh:{label:'Households',unit:''}, pop:{label:'Population',unit:''}, bldg_roof:{label:'Roof',unit:''}
+      } },
+      contours:{ title:'Contours', dataVar:'json_contours_4', layerIds:['contour-line'], definition:'Elevation contour lines.', fields:{ ID:{label:'Contour id',unit:''}, ELEV:{label:'Elevation',unit:'m'} } },
+      roads:{ title:'Roads', dataVar:'json_road_final_3', layerIds:['road-line'], definition:'Road network.', fields:{ ro_name:{label:'Name',unit:''}, ro_width:{label:'Width',unit:'m'}, ro_ml:{label:'Material',unit:''}, ro_typo:{label:'Class',unit:''}, ro_acces:{label:'Access',unit:''} } },
+      plot:{ title:'Plot', dataVar:'json_plot_1', layerIds:['plot-fill','plot-line'], definition:'Cadastral plots.', fields:{ survey_no:{label:'Survey no',unit:''}, area:{label:'Area',unit:'m²'}, land_use:{label:'Land use',unit:''}, fsi:{label:'FSI',unit:''} } },
+      site:{ title:'Site', dataVar:'json_majas_tekdi_2', layerIds:['site-line'], definition:'Project/site boundary.', fields:{ name:{label:'Name',unit:''}, area:{label:'Area',unit:'m²'}, no_bldg:{label:'Building count',unit:''}, pop:{label:'Population',unit:''}, density:{label:'Density',unit:'per km²'} } }
     };
 
     function mountSidebar(){
@@ -178,7 +185,6 @@
           });
         }
       });
-      document.querySelectorAll('input[name="extent"]').forEach(r=>r.addEventListener('change', e=>Store.set({extent:e.target.value})));
     }
     document.addEventListener('DOMContentLoaded', mountSidebar);
 
@@ -189,25 +195,100 @@
       if (key==='buildings') return `<div class="sym"><span class="swatch" style="background:#111827"></span>Footprints</div>`;
       if (key==='contours') return `<div class="sym"><span class="line" style="background:#64748b"></span>Contours</div>`;
       if (key==='roads') return `<div class="sym"><span class="line" style="background:#111827"></span>Primary <span class="line" style="background:#4b5563"></span>Secondary</div>`;
-      if (key==='site'||key==='plot') return `<div class="sym"><span class="line" style="background:#0ea5e9"></span>Boundary</div>`;
+      if (key==='site') return `<div class="sym"><span class="line" style="background:#0ea5e9"></span>Boundary</div>`;
+      if (key==='plot') return `<div class="sym"><span class="swatch" style="background:#38bdf8"></span>Plot area</div>`;
       return '';
     }
+
+    // UHI theming helpers
+    function collectValues(fc, prop){
+      const a=[]; if (!fc?.features) return a;
+      fc.features.forEach(f=>{
+        const v=f.properties?.[prop];
+        if (v!==null && v!==undefined && v!=='' && !Number.isNaN(v)) a.push(v);
+      });
+      return a;
+    }
+    function quantileBreaks(arr, k=5){
+      if (!arr.length) return [];
+      const a=[...arr].map(Number).filter(v=>!isNaN(v)).sort((x,y)=>x-y);
+      const br=[]; for (let i=1;i<k;i++){ const q=i/k; const idx=Math.floor(q*(a.length-1)); br.push(a[idx]); }
+      br.push(a[a.length-1]); return br;
+    }
+    const PALETTE_CONT = ['#f7fbff','#deebf7','#c6dbef','#9ecae1','#6baed6','#4292c6','#2171b5','#084594'];
+    const PALETTE_CAT  = ['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#7f7f7f','#bcbd22'];
+
+    function fillPaintNumeric(field, breaks){
+      const stops=[]; stops.push(breaks[0], PALETTE_CONT[1]);
+      for (let i=1;i<breaks.length;i++){
+        stops.push(breaks[i], PALETTE_CONT[Math.min(i+1, PALETTE_CONT.length-1)]);
+      }
+      return ['step', ['to-number',['get', field]], PALETTE_CONT[0], ...stops];
+    }
+    function fillPaintCategorical(field, cats){
+      const expr=['match', ['get', field]];
+      cats.forEach((c,i)=>{ expr.push(c, PALETTE_CAT[i % PALETTE_CAT.length]); });
+      expr.push('Other', '#cccccc'); return expr;
+    }
+
+    function defaultUhiPaint(){
+      return {
+        fill: {
+          'fill-color': ['match', ['coalesce',['get','band'],['get','class'],'other'],
+            'low', '#fee5d9', 'moderate', '#fcae91', 'high', '#fb6a4a', 'very_high', '#de2d26', 'other', '#fb6a4a'
+          ],
+          'fill-opacity': 0.45
+        },
+        line: { 'line-color':'#ff7f50','line-width':1,'line-opacity':0.8 }
+      };
+    }
+
     function renderLayerSection(state){
       const v=Layers[state.activeLayer];
       const root=document.getElementById('layer-panel');
       root.innerHTML = `
         <div class="panel-head"><h3>${v.title}</h3><p class="muted">${v.definition}</p></div>
         <div class="legend-box">${legendHTML(state.activeLayer)}</div>
+        ${state.activeLayer==='uhi' ? `
+          <details open class="attr">
+            <summary>Fields</summary>
+            <div id="uhi-fields" style="padding:8px 10px; display:grid; gap:6px;"></div>
+          </details>` : ``}
         <div class="kpis" id="kpis">Loading metrics…</div>
         <details open class="attr">
           <summary>Attributes</summary>
           <div id="schema"></div>
           <div class="table-wrap"><div id="table-host"></div></div>
         </details>`;
+
+      if (state.activeLayer==='uhi') renderUhiFieldsList();
       document.getElementById('schema').innerHTML = renderSchema(state.activeLayer);
       updateAttrTable(state.activeLayer);
     }
     Store.on(renderLayerSection);
+
+    function renderUhiFieldsList(){
+      const host = document.getElementById('uhi-fields'); if (!host) return;
+      const fields = Layers.uhi.fields;
+      const keys = Object.keys(fields);
+      const active = Store.state.thematic.uhi;
+
+      let html = `<button data-uhi-field="" style="text-align:left;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;">None (default)</button>`;
+      keys.forEach(k=>{
+        const is = active===k;
+        html += `<button data-uhi-field="${k}" style="text-align:left;padding:6px 8px;border:1px solid ${is?'#93c5fd':'var(--border)'};border-radius:8px;background:${is?'#eff6ff':'#fff'};cursor:pointer;">${fields[k].label||k}</button>`;
+      });
+      host.innerHTML = html;
+
+      host.querySelectorAll('button[data-uhi-field]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const fld = btn.getAttribute('data-uhi-field') || null;
+          Store.state.thematic.uhi = fld;
+          applyUhiThematic();
+          renderUhiFieldsList();
+        });
+      });
+    }
 
     function renderSchema(layerKey){
       const { dataVar, fields } = Layers[layerKey];
@@ -262,13 +343,12 @@
     window.map = map;
     map.addControl(new mapboxgl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new mapboxgl.ScaleControl({maxWidth:140, unit:'metric'}));
-    // Smoother wheel feel
     map.scrollZoom.setWheelZoomRate(1/600);
     map.scrollZoom.setZoomRate(1/1.6);
 
     // Smooth 700 m focus
-    const RADIUS_METERS = 700; // pan radius
-    const SPAN_METERS   = 700; // max visible width
+    const RADIUS_METERS = 700;
+    const SPAN_METERS   = 700;
 
     function zoomForMetersAtLat(targetMeters, lat, pxWidth) {
       const metersPerPixelAtZ0 = 156543.03392 * Math.cos(lat * Math.PI / 180);
@@ -321,13 +401,9 @@
         map.addLayer({id:'bldg-line', type:'line', source:'bldg', paint:{'line-color':'#ffffff','line-width':0.2,'line-opacity':0.5}});
       }
       if (ensureSource('uhi','json_uhi_zones_k_east_ward_7')) {
-        map.addLayer({id:'uhi-fill', type:'fill', source:'uhi', paint:{
-          'fill-color': ['match', ['coalesce',['get','band'],['get','class'],'other'],
-            'low', '#fee5d9', 'moderate', '#fcae91', 'high', '#fb6a4a', 'very_high', '#de2d26',
-            'other', '#fb6a4a' ],
-          'fill-opacity': 0.45
-        }});
-        map.addLayer({id:'uhi-line', type:'line', source:'uhi', paint:{'line-color':'#ff7f50','line-width':1,'line-opacity':0.8}});
+        const p = defaultUhiPaint();
+        map.addLayer({id:'uhi-fill', type:'fill', source:'uhi', paint: p.fill});
+        map.addLayer({id:'uhi-line', type:'line', source:'uhi', paint: p.line});
       }
       if (ensureSource('veg','json_2vp_vegetation_170625vp_vegetation_6')) map.addLayer({id:'veg-point', type:'circle', source:'veg', paint:{'circle-radius':4,'circle-color':'#16a34a','circle-stroke-width':1,'circle-stroke-color':'#064e3b'}});
       if (ensureSource('roads','json_road_final_3')) map.addLayer({id:'road-line', type:'line', source:'roads', paint:{'line-color':'#0f172a','line-width':2,'line-opacity':0.85}});
@@ -346,7 +422,8 @@
       buildings:{ show:['bldg-fill','bldg-line'], dim:[], extras:['road-line','contour-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line','veg-point'] },
       contours:{ show:['contour-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line','veg-point'] },
       roads:{ show:['road-line'], dim:['bldg-fill','bldg-line'], extras:['contour-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line','veg-point'] },
-      site:{ show:['site-line','plot-fill','plot-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point'] }
+      site:{ show:['site-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point','plot-fill','plot-line'] },
+      plot:{ show:['plot-fill','plot-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point','site-line'] }
     };
 
     function applyPreset(key){
@@ -392,7 +469,34 @@
       });
     }
 
-    map.on('load', ()=>{
+    function applyUhiThematic(){
+      if (!map.getLayer('uhi-fill')) return;
+      const field = Store.state.thematic.uhi;
+      if (!field){
+        const p=defaultUhiPaint();
+        map.setPaintProperty('uhi-fill','fill-color', p.fill['fill-color']);
+        map.setPaintProperty('uhi-fill','fill-opacity', p.fill['fill-opacity']);
+        return;
+      }
+      const fc = window.json_uhi_zones_k_east_ward_7;
+      const values = collectValues(fc, field);
+      const numeric = values.every(v=> !isNaN(Number(v)));
+      if (numeric){
+        const br = quantileBreaks(values.map(Number), 5);
+        const expr = fillPaintNumeric(field, br);
+        map.setPaintProperty('uhi-fill','fill-color', expr);
+        map.setPaintProperty('uhi-fill','fill-opacity', 0.6);
+      } else {
+        const freq = new Map();
+        values.forEach(v=> freq.set(v, (freq.get(v)||0)+1));
+        const cats = [...freq.entries()].sort((a,b)=>b[1]-a[1]).slice(0,9).map(d=>d[0]);
+        const expr = fillPaintCategorical(field, cats);
+        map.setPaintProperty('uhi-fill','fill-color', expr);
+        map.setPaintProperty('uhi-fill','fill-opacity', 0.6);
+      }
+    }
+
+    function initSmoothFocus(){
       try{
         let box=null;
         if (window.json_majas_tekdi_2?.features?.length) box=turf.bbox(window.json_majas_tekdi_2);
@@ -401,8 +505,18 @@
         if (box) map.fitBounds([[box[0],box[1]],[box[2],box[3]]], { padding: 40, duration: 0 });
       }catch(e){ console.warn('fitBounds error', e); }
 
-      addLayers();
+      buildingsCenter = buildingsCentroid();
+      applyZoomOutCapSpan();
+      enforceRadiusEased();
 
+      window.addEventListener('resize', applyZoomOutCapSpan);
+      map.on('zoom', applyZoomOutCapSpan);
+      map.on('move', scheduleRadiusGuard);
+      map.on('moveend', enforceRadiusEased);
+    }
+
+    map.on('load', ()=>{
+      addLayers();
       Object.keys(Layers).forEach(k => setLayerVisible(k, Store.state.visible[k] !== false));
 
       attachFeatureInfo();
@@ -412,19 +526,17 @@
 
       setTimeout(()=>{
         applyPreset(Store.state.activeLayer);
-        buildingsCenter = buildingsCentroid();
-        applyZoomOutCapSpan();
-        enforceRadiusEased();
+        initSmoothFocus();
+        applyUhiThematic();
       }, 60);
     });
 
-    // Smooth enforcement hooks
-    window.addEventListener('resize', applyZoomOutCapSpan);
-    map.on('zoom', applyZoomOutCapSpan);
-    map.on('move', scheduleRadiusGuard);
-    map.on('moveend', enforceRadiusEased);
-
-    Store.on(s=>{ if(map.loaded()) applyPreset(s.activeLayer); });
+    Store.on(s=>{
+      if(map.loaded()) {
+        applyPreset(s.activeLayer);
+        if (s.activeLayer==='uhi') applyUhiThematic();
+      }
+    });
   </script>
 </body>
 </html>
