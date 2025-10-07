@@ -4,20 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Site Explorer</title>
-
-  <!-- Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Mapbox GL JS -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
-
-  <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-  <!-- Data files -->
   <script src="data/majas_tekdi_2.js"></script>
   <script src="data/plot_1.js"></script>
   <script src="data/buildings_final_5.js"></script>
@@ -25,7 +17,6 @@
   <script src="data/contours_4.js"></script>
   <script src="data/2vp_vegetation_170625vp_vegetation_6.js"></script>
   <script src="data/uhi_zones_k_east_ward_7.js"></script>
-
   <style>
     :root { --bg:#f6f7fb; --panel:#fff; --text:#1a1c22; --muted:#5a5f6b; --border:#e6e8ef; --accent:#0ea5e9; }
     html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
@@ -34,21 +25,17 @@
     .sidebar-header { position:sticky; top:0; padding:14px 16px; border-bottom:1px solid var(--border); background:#fff; z-index:2; }
     .site-title { font-weight:600; letter-spacing:.1px; }
     .sections { display:flex; flex-direction:column; gap:8px; padding:12px; overflow:auto; }
-
     .section-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .section-row .section-tab { flex:1; text-align:left; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#f8fafc; cursor:pointer; font-weight:500; }
     .section-row .section-tab.active { background:#e8f4ff; border-color:#cfe6ff; }
-
     .switch { position: relative; display:inline-flex; align-items:center; width:40px; height:22px; }
     .switch input { display:none; }
     .switch span { position:relative; display:block; width:40px; height:22px; background:#e5e7eb; border-radius:999px; box-shadow:inset 0 0 0 1px #d1d5db; transition:background .2s ease; }
     .switch span::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.15); transition:transform .2s ease; }
     .switch input:checked + span { background:#0ea5e9; box-shadow:inset 0 0 0 1px #0ea5e9; }
     .switch input:checked + span::after { transform:translateX(18px); }
-
     .divider { height:1px; background:var(--border); margin:8px 0; }
     .basemap-row { font-size:13px; color:var(--muted); padding:6px 2px; }
-
     .layer-panel { border-top:1px solid var(--border); padding:12px; overflow:hidden; }
     .panel-head h3 { margin:0 0 6px; font-size:16px; }
     .panel-head p { margin:0; color:var(--muted); }
@@ -63,16 +50,13 @@
     .kpi { border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:#fafcff; }
     .kpi .k { font-size:12px; color:var(--muted); }
     .kpi .v { font-size:16px; font-weight:600; }
-
     details.attr { border:1px solid var(--border); border-radius:10px; background:#fff; }
     details.attr > summary { cursor:pointer; padding:8px 10px; font-weight:600; }
-
     .table-wrap { padding:6px 10px 10px; max-height:42vh; overflow:auto; overscroll-behavior:contain; border-top:1px solid var(--border); }
     .filter { padding:0 10px 8px; position:sticky; top:0; background:#fff; z-index:2; }
     .grid { border-collapse:collapse; width:max-content; min-width:100%; }
     .grid th, .grid td { border:1px solid var(--border); padding:6px 8px; font-size:13px; white-space:nowrap; }
     .grid th { background:#f3f4f6; position:sticky; top:0; z-index:1; }
-
     .map-wrap { position:relative; }
     #map { position:absolute; inset:0; }
     @media (max-width: 900px) {
@@ -87,7 +71,6 @@
       <div class="sidebar-header">
         <div class="site-title">Site Explorer</div>
       </div>
-
       <nav class="sections">
         <div class="section-row" data-layer="uhi">
           <button class="section-tab">Urban heat island</button>
@@ -117,22 +100,17 @@
           <button class="section-tab">Plot</button>
           <label class="switch"><input type="checkbox" class="vis-toggle" data-toggle="plot" checked /><span></span></label>
         </div>
-
         <div class="divider"></div>
         <div class="basemap-row">Basemap: Carto Light</div>
       </nav>
-
       <section class="layer-panel" id="layer-panel"></section>
     </aside>
-
     <main class="map-wrap">
       <div id="map"></div>
     </main>
   </div>
-
   <script>
     mapboxgl.accessToken = 'pk.eyJ1Ijoia3Jpc2huYTQ1NjciLCJhIjoiY21kcXNjODg2MDltbTJycTNxMmJsenNhYiJ9.Upxy1ZZPcflUGhWZ004hHw';
-
     const Store = {
       state:{ activeLayer:'uhi',
         visible:{ uhi:true, vegetation:true, buildings:true, contours:true, roads:true, plot:true, site:true },
@@ -143,7 +121,6 @@
       on(fn){ this.subs.add(fn); return ()=>this.subs.delete(fn); }
     };
     try { const saved = JSON.parse(localStorage.getItem('layer_visible')||'{}'); Store.state.visible = { ...Store.state.visible, ...saved }; } catch(e){}
-
     const Layers = {
       uhi:{ title:'Urban heat island', dataVar:'json_uhi_zones_k_east_ward_7', layerIds:['uhi-fill','uhi-line'], definition:'Surface temperature intensity bands relative to local context.', fields:{
         Label:{label:'Label',unit:''},
@@ -161,22 +138,18 @@
       plot:{ title:'Plot', dataVar:'json_plot_1', layerIds:['plot-fill','plot-line'], definition:'Cadastral plots.', fields:{ survey_no:{label:'Survey no',unit:''}, area:{label:'Area',unit:'m²'}, land_use:{label:'Land use',unit:''}, fsi:{label:'FSI',unit:''} } },
       site:{ title:'Site', dataVar:'json_majas_tekdi_2', layerIds:['site-line'], definition:'Project/site boundary.', fields:{ name:{label:'Name',unit:''}, area:{label:'Area',unit:'m²'}, no_bldg:{label:'Building count',unit:''}, pop:{label:'Population',unit:''}, density:{label:'Density',unit:'per km²'} } }
     };
-
     function mountSidebar(){
       document.querySelectorAll('.section-row').forEach(row=>{
         const key = row.getAttribute('data-layer');
         const btn = row.querySelector('.section-tab');
         const chk = row.querySelector('.vis-toggle');
-
         btn.classList.toggle('active', key === Store.state.activeLayer);
         if (chk) chk.checked = Store.state.visible[key] ?? true;
-
         btn.addEventListener('click', ()=>{
           document.querySelectorAll('.section-tab').forEach(b=>b.classList.remove('active'));
           btn.classList.add('active');
           Store.set({ activeLayer: key });
         });
-
         if (chk) {
           chk.addEventListener('click', e=> e.stopPropagation());
           chk.addEventListener('change', e=>{
@@ -189,7 +162,6 @@
       });
     }
     document.addEventListener('DOMContentLoaded', mountSidebar);
-
     function toArray(fc){ return (fc && fc.features) ? fc.features : []; }
     function legendHTML(key){
       if (key==='uhi') return `<div class="ramp"></div><div class="ticks"><span>Low</span><span>High</span></div>`;
@@ -201,8 +173,7 @@
       if (key==='plot') return `<div class="sym"><span class="swatch" style="background:#38bdf8"></span>Plot area</div>`;
       return '';
     }
-
-    // UHI theming helpers
+    // Quantile/categorical helpers for UHI fields
     function collectValues(fc, prop){
       const a=[]; if (!fc?.features) return a;
       fc.features.forEach(f=>{
@@ -219,12 +190,9 @@
     }
     const PALETTE_CONT = ['#f7fbff','#deebf7','#c6dbef','#9ecae1','#6baed6','#4292c6','#2171b5','#084594'];
     const PALETTE_CAT  = ['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#7f7f7f','#bcbd22'];
-
     function fillPaintNumeric(field, breaks){
       const stops=[]; stops.push(breaks[0], PALETTE_CONT[1]);
-      for (let i=1;i<breaks.length;i++){
-        stops.push(breaks[i], PALETTE_CONT[Math.min(i+1, PALETTE_CONT.length-1)]);
-      }
+      for (let i=1;i<breaks.length;i++){ stops.push(breaks[i], PALETTE_CONT[Math.min(i+1, PALETTE_CONT.length-1)]); }
       return ['step', ['to-number',['get', field]], PALETTE_CONT[0], ...stops];
     }
     function fillPaintCategorical(field, cats){
@@ -232,7 +200,6 @@
       cats.forEach((c,i)=>{ expr.push(c, PALETTE_CAT[i % PALETTE_CAT.length]); });
       expr.push('Other', '#cccccc'); return expr;
     }
-
     function defaultUhiPaint(){
       return {
         fill: {
@@ -251,7 +218,6 @@
         line: { 'line-color':'#ff7f50','line-width':1,'line-opacity':0.8 }
       };
     }
-
     function renderLayerSection(state){
       const v=Layers[state.activeLayer];
       const root=document.getElementById('layer-panel');
@@ -259,45 +225,44 @@
         <div class="panel-head"><h3>${v.title}</h3><p class="muted">${v.definition}</p></div>
         <div class="legend-box">${legendHTML(state.activeLayer)}</div>
         ${state.activeLayer==='uhi' ? `
-          <details open class="attr">
-            <summary>Fields</summary>
-            <div id="uhi-fields" style="padding:8px 10px; display:grid; gap:6px;"></div>
-          </details>` : ``}
+            <details open class="attr">
+              <summary>Fields</summary>
+              <div id="uhi-fields" style="padding:8px 10px; display:grid; gap:6px;"></div>
+            </details>` : ``}
         <div class="kpis" id="kpis">Loading metrics…</div>
         <details open class="attr">
           <summary>Attributes</summary>
           <div id="schema"></div>
           <div class="table-wrap"><div id="table-host"></div></div>
         </details>`;
-
       if (state.activeLayer==='uhi') renderUhiFieldsList();
       document.getElementById('schema').innerHTML = renderSchema(state.activeLayer);
       updateAttrTable(state.activeLayer);
     }
     Store.on(renderLayerSection);
 
+    // --- REMOVE None (default) option here ----
     function renderUhiFieldsList(){
       const host = document.getElementById('uhi-fields'); if (!host) return;
       const fields = Layers.uhi.fields;
       const keys = Object.keys(fields);
       const active = Store.state.thematic.uhi;
-
-      let html = `<button data-uhi-field="" style="text-align:left;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;">None (default)</button>`;
+      let html = '';
       keys.forEach(k=>{
         const is = active===k;
         html += `<button data-uhi-field="${k}" style="text-align:left;padding:6px 8px;border:1px solid ${is?'#93c5fd':'var(--border)'};border-radius:8px;background:${is?'#eff6ff':'#fff'};cursor:pointer;">${fields[k].label||k}</button>`;
       });
       host.innerHTML = html;
-
       host.querySelectorAll('button[data-uhi-field]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          const fld = btn.getAttribute('data-uhi-field') || null;
+          const fld = btn.getAttribute('data-uhi-field');
           Store.state.thematic.uhi = fld;
           applyUhiThematic();
           renderUhiFieldsList();
         });
       });
     }
+    //--------------------------------------------------
 
     function renderSchema(layerKey){
       const { dataVar, fields } = Layers[layerKey];
@@ -340,7 +305,6 @@
       const el=document.getElementById('kpis');
       if (el) el.innerHTML = computeKPIs(state.activeLayer).map(i=>`<div class="kpi"><div class="k">${i.label}</div><div class="v">${i.value}</div></div>`).join('') || '<div class="muted">No KPIs available</div>';
     });
-
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/light-v11',
@@ -354,11 +318,9 @@
     map.addControl(new mapboxgl.ScaleControl({maxWidth:140, unit:'metric'}));
     map.scrollZoom.setWheelZoomRate(1/600);
     map.scrollZoom.setZoomRate(1/1.6);
-
     // Smooth 700 m focus
     const RADIUS_METERS = 700;
     const SPAN_METERS   = 700;
-
     function zoomForMetersAtLat(targetMeters, lat, pxWidth) {
       const metersPerPixelAtZ0 = 156543.03392 * Math.cos(lat * Math.PI / 180);
       return Math.log2((metersPerPixelAtZ0 * pxWidth) / targetMeters);
@@ -371,7 +333,6 @@
       const b = buildingsBBox(); return b ? [(b[0]+b[2])/2, (b[1]+b[3])/2] : null;
     }
     let buildingsCenter = null;
-
     function applyZoomOutCapSpan() {
       const b = buildingsBBox(); if (!b) return;
       const lat = (b[1]+b[3])/2, px = map.getCanvas().width || 800;
@@ -380,7 +341,6 @@
       map.setMinZoom(clamp);
       if (map.getZoom() < clamp) map.easeTo({ zoom: clamp, duration: 120 });
     }
-
     let panGuardTimer = null;
     function scheduleRadiusGuard() {
       if (panGuardTimer) clearTimeout(panGuardTimer);
@@ -394,7 +354,6 @@
         map.easeTo({ center: buildingsCenter, duration: 250, easing: t => t });
       }
     }
-
     function ensureSource(id, dataVarName){
       const data=window[dataVarName]; if (!data){ console.warn('Missing data var:', dataVarName); return false; }
       if (!map.getSource(id)) map.addSource(id, {type:'geojson', data}); return true;
@@ -418,13 +377,11 @@
       if (ensureSource('roads','json_road_final_3')) map.addLayer({id:'road-line', type:'line', source:'roads', paint:{'line-color':'#0f172a','line-width':2,'line-opacity':0.85}});
       if (ensureSource('contours','json_contours_4')) map.addLayer({id:'contour-line', type:'line', source:'contours', paint:{'line-color':'#64748b','line-width':1.2,'line-opacity':0.7}});
     }
-
     function setLayerVisible(key, on){
       (Layers[key].layerIds||[]).forEach(id=>{
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
       });
     }
-
     const presets = {
       uhi:{ show:['uhi-fill','uhi-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','site-line','plot-fill','plot-line','veg-point'] },
       vegetation:{ show:['veg-point'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','site-line','plot-fill','plot-line','uhi-fill','uhi-line'] },
@@ -434,11 +391,9 @@
       site:{ show:['site-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point','plot-fill','plot-line'] },
       plot:{ show:['plot-fill','plot-line'], dim:['bldg-fill','bldg-line'], extras:['road-line','contour-line','uhi-fill','uhi-line','veg-point','site-line'] }
     };
-
     function applyPreset(key){
       const all=new Set([].concat(...Object.values(presets).map(v=>[...v.show,...v.dim,...v.extras])));
       all.forEach(id=>{ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility','none'); });
-
       const ok = (layerKey) => Store.state.visible[layerKey] !== false;
       const mapIdToKey = {
         'uhi-fill':'uhi','uhi-line':'uhi',
@@ -449,19 +404,16 @@
         'plot-fill':'plot','plot-line':'plot',
         'site-line':'site'
       };
-
       const ids = [...(presets[key]?.show||[]), ...(presets[key]?.dim||[]), ...(presets[key]?.extras||[])];
       ids.forEach(id=>{
         const k = mapIdToKey[id]; if (!k || !ok(k)) return;
         if (map.getLayer(id)) map.setLayoutProperty(id,'visibility','visible');
       });
-
       if (Store.state.visible.buildings && (presets[key]?.dim||[]).includes('bldg-fill') && map.getLayer('bldg-fill')) {
         map.setPaintProperty('bldg-fill','fill-color','#111827');
         map.setPaintProperty('bldg-fill','fill-opacity',0.35);
       }
     }
-
     function attachFeatureInfo(){
       Object.keys(Layers).forEach(key=>{
         Layers[key].layerIds.forEach(id=>{
@@ -477,7 +429,6 @@
         });
       });
     }
-
     function applyUhiThematic(){
       if (!map.getLayer('uhi-fill')) return;
       const field = Store.state.thematic.uhi;
@@ -504,7 +455,6 @@
         map.setPaintProperty('uhi-fill','fill-opacity', 0.6);
       }
     }
-
     function initSmoothFocus(){
       try{
         let box=null;
@@ -513,33 +463,27 @@
         else if (window.json_plot_1?.features?.length) box=turf.bbox(window.json_plot_1);
         if (box) map.fitBounds([[box[0],box[1]],[box[2],box[3]]], { padding: 40, duration: 0 });
       }catch(e){ console.warn('fitBounds error', e); }
-
       buildingsCenter = buildingsCentroid();
       applyZoomOutCapSpan();
       enforceRadiusEased();
-
       window.addEventListener('resize', applyZoomOutCapSpan);
       map.on('zoom', applyZoomOutCapSpan);
       map.on('move', scheduleRadiusGuard);
       map.on('moveend', enforceRadiusEased);
     }
-
     map.on('load', ()=>{
       addLayers();
       Object.keys(Layers).forEach(k => setLayerVisible(k, Store.state.visible[k] !== false));
-
       attachFeatureInfo();
       renderLayerSection(Store.state);
       const el=document.getElementById('kpis');
       if (el) el.innerHTML = computeKPIs(Store.state.activeLayer).map(i=>`<div class="kpi"><div class="k">${i.label}</div><div class="v">${i.value}</div></div>`).join('');
-
       setTimeout(()=>{
         applyPreset(Store.state.activeLayer);
         initSmoothFocus();
         applyUhiThematic();
       }, 60);
     });
-
     Store.on(s=>{
       if(map.loaded()) {
         applyPreset(s.activeLayer);
